@@ -2113,24 +2113,24 @@ namespace UnityEngine.Experimental.Rendering.HDPipeline
 
             // -----------------------------------------------------------------------------
             // Clear
-            HDUtils.SetRenderTarget(cmd, camera, SMAAEdgeTex, ClearFlag.Color);
-            HDUtils.SetRenderTarget(cmd, camera, SMAABlendTex, ClearFlag.Color);
+            HDUtils.SetRenderTarget(cmd, SMAAEdgeTex, ClearFlag.Color);
+            HDUtils.SetRenderTarget(cmd, SMAABlendTex, ClearFlag.Color);
 
             // -----------------------------------------------------------------------------
             // EdgeDetection stage
             cmd.SetGlobalTexture(HDShaderIDs._InputTexture, source);
-            HDUtils.DrawFullScreen(cmd, camera, m_SMAAMaterial, SMAAEdgeTex, depthBuffer, null, (int)SMAAStage.EdgeDetection);
+            HDUtils.DrawFullScreen(cmd, m_SMAAMaterial, SMAAEdgeTex, depthBuffer, null, (int)SMAAStage.EdgeDetection);
 
             // -----------------------------------------------------------------------------
             // BlendWeights stage
             cmd.SetGlobalTexture(HDShaderIDs._InputTexture, SMAAEdgeTex);
-            HDUtils.DrawFullScreen(cmd, camera, m_SMAAMaterial, SMAABlendTex, depthBuffer, null, (int)SMAAStage.BlendWeights);
+            HDUtils.DrawFullScreen(cmd, m_SMAAMaterial, SMAABlendTex, depthBuffer, null, (int)SMAAStage.BlendWeights);
 
             // -----------------------------------------------------------------------------
             // NeighborhoodBlending stage
             cmd.SetGlobalTexture(HDShaderIDs._InputTexture, source);
             m_SMAAMaterial.SetTexture(HDShaderIDs._SMAABlendTex, SMAABlendTex);
-            HDUtils.DrawFullScreen(cmd, camera, m_SMAAMaterial, destination, null, (int)SMAAStage.NeighborhoodBlending);
+            HDUtils.DrawFullScreen(cmd, m_SMAAMaterial, destination, null, (int)SMAAStage.NeighborhoodBlending);
 
             // -----------------------------------------------------------------------------
             m_Pool.Recycle(SMAAEdgeTex);

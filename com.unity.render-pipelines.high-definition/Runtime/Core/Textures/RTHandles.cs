@@ -167,19 +167,6 @@ namespace UnityEngine.Experimental.Rendering
             s_DefaultInstance.Release(rth);
         }
 
-        public static void ResetReferenceSize(
-            int width,
-            int height,
-            MSAASamples msaaSamples
-            )
-        {
-            s_DefaultInstance.ResetReferenceSize(
-                width,
-                height,
-                msaaSamples
-                );
-        }
-
         public static void SetHardwareDynamicResolutionState(bool hwDynamicResRequested)
         {
             s_DefaultInstance.SetHardwareDynamicResolutionState(hwDynamicResRequested);

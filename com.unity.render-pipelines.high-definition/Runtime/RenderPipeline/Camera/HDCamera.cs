@@ -70,6 +70,7 @@ namespace UnityEngine.Experimental.Rendering.HDPipeline
         // This is the viewport size actually used for this camera (as it can be altered by VR for example)
         int m_ActualWidth;
         int m_ActualHeight;
+        Vector2Int m_NonScaledViewportSize;
         // And for the previous frame...
         Vector2Int m_ViewportSizePrevFrame;
 
@@ -311,13 +312,13 @@ namespace UnityEngine.Experimental.Rendering.HDPipeline
             // Handle memory allocation.
             {
                 bool isColorPyramidHistoryRequired = m_frameSettings.IsEnabled(FrameSettingsField.SSR); // TODO: TAA as well
-                bool isVolumetricHistoryRequired   = m_frameSettings.IsEnabled(FrameSettingsField.Volumetrics) && m_frameSettings.IsEnabled(FrameSettingsField.ReprojectionForVolumetrics);
+                bool isVolumetricHistoryRequired = m_frameSettings.IsEnabled(FrameSettingsField.Volumetrics) && m_frameSettings.IsEnabled(FrameSettingsField.ReprojectionForVolumetrics);
 
                 int numColorPyramidBuffersRequired = isColorPyramidHistoryRequired ? 2 : 1; // TODO: 1 -> 0
-                int numVolumetricBuffersRequired   = isVolumetricHistoryRequired   ? 2 : 0; // History + feedback
+                int numVolumetricBuffersRequired = isVolumetricHistoryRequired ? 2 : 0; // History + feedback
 
                 if ((numColorPyramidBuffersAllocated != numColorPyramidBuffersRequired) ||
-                    (numVolumetricBuffersAllocated   != numVolumetricBuffersRequired))
+                    (numVolumetricBuffersAllocated != numVolumetricBuffersRequired))
                 {
                     // Reinit the system.
                     colorPyramidHistoryIsValid = false;
@@ -337,7 +338,7 @@ namespace UnityEngine.Experimental.Rendering.HDPipeline
 
                     // Mark as init.
                     numColorPyramidBuffersAllocated = numColorPyramidBuffersRequired;
-                    numVolumetricBuffersAllocated   = numVolumetricBuffersRequired;
+                    numVolumetricBuffersAllocated = numVolumetricBuffersRequired;
                 }
             }
 
@@ -348,11 +349,12 @@ namespace UnityEngine.Experimental.Rendering.HDPipeline
             m_ActualWidth = Math.Max(camera.pixelWidth, 1);
             m_ActualHeight = Math.Max(camera.pixelHeight, 1);
 
-            Vector2Int nonScaledSize = new Vector2Int(m_ActualWidth, m_ActualHeight);
+            // Have to keep track of non scaled size to update the RTHandle system.
+            m_NonScaledViewportSize = new Vector2Int(m_ActualWidth, m_ActualHeight);
             if (isMainGameView)
             {
                 Vector2Int scaledSize = HDDynamicResolutionHandler.instance.GetRTHandleScale(new Vector2Int(camera.pixelWidth, camera.pixelHeight));
-                nonScaledSize = HDDynamicResolutionHandler.instance.cachedOriginalSize;
+                m_NonScaledViewportSize = HDDynamicResolutionHandler.instance.cachedOriginalSize;
                 m_ActualWidth = scaledSize.x;
                 m_ActualHeight = scaledSize.y;
             }
@@ -367,14 +369,31 @@ namespace UnityEngine.Experimental.Rendering.HDPipeline
                 Debug.Assert(HDDynamicResolutionHandler.instance.SoftwareDynamicResIsEnabled() == false);
 
                 var xrDesc = XRGraphics.eyeTextureDesc;
-                nonScaledSize.x = screenWidth  = m_ActualWidth  = xrDesc.width;
-                nonScaledSize.y = screenHeight = m_ActualHeight = xrDesc.height;
+                m_NonScaledViewportSize.x = screenWidth = m_ActualWidth = xrDesc.width;
+                m_NonScaledViewportSize.y = screenHeight = m_ActualHeight = xrDesc.height;
 
                 textureWidthScaling = new Vector4(2.0f, 0.5f, 0.0f, 0.0f);
             }
 
             m_LastFrameActive = Time.frameCount;
 
+            m_msaaSamples = msaaSamples;
+
+            screenSize = new Vector4(screenWidth, screenHeight, 1.0f / screenWidth, 1.0f / screenHeight);
+            screenParams = new Vector4(screenSize.x, screenSize.y, 1 + screenSize.z, 1 + screenSize.w);
+
+            if (vlSys != null)
+            {
+                vlSys.UpdatePerCameraData(this);
+            }
+
+            UpdateVolumeParameters();
+        }
+
+        // Updating RTHandle needs to be done at the beginning of rendering (not during update of HDCamera which happens in batches)
+        // The reason is that RTHandle will hold data necessary to setup RenderTargets and viewports properly.
+        public void BeginRender()
+        {
             // TODO: cache this, or make the history system spill the beans...
             Vector2Int prevColorPyramidBufferSize = Vector2Int.zero;
 
@@ -398,11 +417,10 @@ namespace UnityEngine.Experimental.Rendering.HDPipeline
                 prevVolumetricBufferSize.z = rt.volumeDepth;
             }
 
-            m_msaaSamples = msaaSamples;
             // Here we use the non scaled resolution for the RTHandleSystem ref size because we assume that at some point we will need full resolution anyway.
             // This is also useful because we have some RT after final up-rez that will need the full size.
-            RTHandles.SetReferenceSize(nonScaledSize.x, nonScaledSize.y, m_msaaSamples);
-            m_HistoryRTSystem.SetReferenceSize(nonScaledSize.x, nonScaledSize.y, m_msaaSamples);
+            RTHandles.SetReferenceSize(m_NonScaledViewportSize.x, m_NonScaledViewportSize.y, m_msaaSamples);
+            m_HistoryRTSystem.SetReferenceSize(m_NonScaledViewportSize.x, m_NonScaledViewportSize.y, m_msaaSamples);
             m_HistoryRTSystem.Swap();
 
             Vector3Int currColorPyramidBufferSize = Vector3Int.zero;
@@ -447,20 +465,10 @@ namespace UnityEngine.Experimental.Rendering.HDPipeline
 
             m_ViewportScalePreviousFrame = m_ViewportSizePrevFrame * rcpTextureSize;
             m_ViewportScalePreviousFrameHistory = m_ViewportSizePrevFrame * rcpTextureSizeHistory;
-            m_ViewportScaleCurrentFrame  = new Vector2Int(m_ActualWidth, m_ActualHeight) * rcpTextureSize;
+            m_ViewportScaleCurrentFrame = new Vector2Int(m_ActualWidth, m_ActualHeight) * rcpTextureSize;
             m_ViewportScaleCurrentFrameHistory = m_ViewportSizePrevFrame * rcpTextureSizeHistory;
 
-            screenSize = new Vector4(screenWidth, screenHeight, 1.0f / screenWidth, 1.0f / screenHeight);
-            screenParams = new Vector4(screenSize.x, screenSize.y, 1 + screenSize.z, 1 + screenSize.w);
-
-            finalViewport = new Rect(camera.pixelRect.x, camera.pixelRect.y, nonScaledSize.x, nonScaledSize.y);
-
-            if (vlSys != null)
-            {
-                vlSys.UpdatePerCameraData(this);
-            }
-
-            UpdateVolumeParameters();
+            finalViewport = new Rect(camera.pixelRect.x, camera.pixelRect.y, m_NonScaledViewportSize.x, m_NonScaledViewportSize.y);
 
             m_RecorderCaptureActions = CameraCaptureBridge.GetCaptureActions(camera);
         }
