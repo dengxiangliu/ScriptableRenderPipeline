@@ -273,9 +273,10 @@ namespace UnityEngine.Experimental.Rendering.HDPipeline
         // Here, both source and destination are camera-scaled.
         public static void BlitCameraTexture(CommandBuffer cmd, RTHandleSystem.RTHandle source, RTHandleSystem.RTHandle destination, float mipLevel = 0.0f, bool bilinear = false)
         {
+            Vector2 viewportScale = new Vector2(source.rtHandleProperties.screenToTargetScale.x, source.rtHandleProperties.screenToTargetScale.y);
             // Will set the correct camera viewport as well.
             SetRenderTarget(cmd, destination);
-            BlitTexture(cmd, source, destination, source.rtHandleProperties.screenToTargetScale, mipLevel, bilinear);
+            BlitTexture(cmd, source, destination, viewportScale, mipLevel, bilinear);
         }
 
 
@@ -289,9 +290,10 @@ namespace UnityEngine.Experimental.Rendering.HDPipeline
 
         public static void BlitCameraTexture(CommandBuffer cmd, RTHandleSystem.RTHandle source, RTHandleSystem.RTHandle destination, Rect destViewport, float mipLevel = 0.0f, bool bilinear = false)
         {
+            Vector2 viewportScale = new Vector2(source.rtHandleProperties.screenToTargetScale.x, source.rtHandleProperties.screenToTargetScale.y);
             SetRenderTarget(cmd, destination);
             cmd.SetViewport(destViewport);
-            BlitTexture(cmd, source, destination, source.rtHandleProperties.screenToTargetScale, mipLevel, bilinear);
+            BlitTexture(cmd, source, destination, viewportScale, mipLevel, bilinear);
         }
 
         // These method should be used to render full screen triangles sampling auto-scaling RTs.
@@ -344,14 +346,14 @@ namespace UnityEngine.Experimental.Rendering.HDPipeline
         {
             // We request the mouse post based on the type of the camera
             Vector2 mousePixelCoord = MousePositionDebug.instance.GetMousePosition(camera.screenSize.y, camera.camera.cameraType == CameraType.SceneView);
-            return new Vector4(mousePixelCoord.x, mousePixelCoord.y, camera.viewportScale.x * mousePixelCoord.x / camera.screenSize.x, camera.viewportScale.y * mousePixelCoord.y / camera.screenSize.y);
+            return new Vector4(mousePixelCoord.x, mousePixelCoord.y, RTHandles.rtHandleProperties.screenToTargetScale.x * mousePixelCoord.x / camera.screenSize.x, RTHandles.rtHandleProperties.screenToTargetScale.y * mousePixelCoord.y / camera.screenSize.y);
         }
 
         // Returns mouse click coordinates: (x,y) in pixels and (z,w) normalized inside the render target (not the viewport)
         public static Vector4 GetMouseClickCoordinates(HDCamera camera)
         {
             Vector2 mousePixelCoord = MousePositionDebug.instance.GetMouseClickPosition(camera.screenSize.y);
-            return new Vector4(mousePixelCoord.x, mousePixelCoord.y, camera.viewportScale.x * mousePixelCoord.x / camera.screenSize.x, camera.viewportScale.y * mousePixelCoord.y / camera.screenSize.y);
+            return new Vector4(mousePixelCoord.x, mousePixelCoord.y, RTHandles.rtHandleProperties.screenToTargetScale.x * mousePixelCoord.x / camera.screenSize.x, RTHandles.rtHandleProperties.screenToTargetScale.y * mousePixelCoord.y / camera.screenSize.y);
         }
 
         // This function check if camera is a CameraPreview, then check if this preview is a regular preview (i.e not a preview from the camera editor)

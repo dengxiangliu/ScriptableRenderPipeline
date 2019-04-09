@@ -9,6 +9,7 @@ namespace UnityEngine.Experimental.Rendering
 
         public static int maxWidth { get { return s_DefaultInstance.GetMaxWidth(); } }
         public static int maxHeight { get { return s_DefaultInstance.GetMaxHeight(); } }
+        public static RTHandleProperties rtHandleProperties { get { return s_DefaultInstance.rtHandleProperties; } }
 
         public static RTHandleSystem.RTHandle Alloc(
             int width,

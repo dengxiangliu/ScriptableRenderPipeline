@@ -834,7 +834,7 @@ namespace UnityEngine.Experimental.Rendering.HDPipeline
             // If TAA is enabled we use the camera history system to grab CoC history textures, but
             // because these don't use the same RTHandle system as the global one we'll have a
             // different scale than _ScreenToTargetScale so we need to handle our own
-            var cocHistoryScale = camera.doubleBufferedViewportScale;
+            var cocHistoryScale = RTHandles.rtHandleProperties.screenToTargetScale;
 
             ComputeShader cs;
             int kernel;

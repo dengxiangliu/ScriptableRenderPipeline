@@ -253,7 +253,7 @@ namespace UnityEngine.Experimental.Rendering.HDPipeline
                 }
 
                 // Grab current viewport scale factor - needed to handle RTHandle auto resizing
-                var viewport = camera.viewportScale;
+                var viewport = new Vector2(RTHandles.rtHandleProperties.screenToTargetScale.x, RTHandles.rtHandleProperties.screenToTargetScale.y);
 
                 // Textures used for rendering
                 RTHandle depthMap, destination;
