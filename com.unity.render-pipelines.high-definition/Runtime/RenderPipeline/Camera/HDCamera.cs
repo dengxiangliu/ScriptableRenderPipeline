@@ -33,6 +33,8 @@ namespace UnityEngine.Experimental.Rendering.HDPipeline
         // This will have the correct viewport position and the size will be full resolution (ie : not taking dynamic rez into account)
         public Rect      finalViewport;
 
+        public RTHandleProperties historyRTHandleProperties { get { return m_HistoryRTSystem.rtHandleProperties; } }
+
         public bool colorPyramidHistoryIsValid = false;
         public bool volumetricHistoryIsValid   = false; // Contains garbage otherwise
         public int  colorPyramidHistoryMipCount = 0;
@@ -71,8 +73,6 @@ namespace UnityEngine.Experimental.Rendering.HDPipeline
         int m_ActualWidth;
         int m_ActualHeight;
         Vector2Int m_NonScaledViewportSize;
-        // And for the previous frame...
-        Vector2Int m_ViewportSizePrevFrame;
 
         // Current mssa sample
         MSAASamples m_msaaSamples;
@@ -316,7 +316,6 @@ namespace UnityEngine.Experimental.Rendering.HDPipeline
             UpdateViewConstants(IsTAAEnabled());
 
             // Update viewport sizes.
-            m_ViewportSizePrevFrame = new Vector2Int(m_ActualWidth, m_ActualHeight);
             m_ActualWidth = Math.Max(camera.pixelWidth, 1);
             m_ActualHeight = Math.Max(camera.pixelHeight, 1);
 
@@ -912,8 +911,8 @@ namespace UnityEngine.Experimental.Rendering.HDPipeline
             cmd.SetGlobalVector(HDShaderIDs._WorldSpaceCameraPos,       worldSpaceCameraPos);
             cmd.SetGlobalVector(HDShaderIDs._PrevCamPosRWS,             prevWorldSpaceCameraPos);
             cmd.SetGlobalVector(HDShaderIDs._ScreenSize,                screenSize);
-            cmd.SetGlobalVector(HDShaderIDs._ScreenToTargetScale,       RTHandles.rtHandleProperties.screenToTargetScale);
-            cmd.SetGlobalVector(HDShaderIDs._ScreenToTargetScaleHistory, m_HistoryRTSystem.rtHandleProperties.screenToTargetScale);
+            cmd.SetGlobalVector(HDShaderIDs._RTHandleScale,             RTHandles.rtHandleProperties.rtHandleScale);
+            cmd.SetGlobalVector(HDShaderIDs._RTHandleScaleHistory,      m_HistoryRTSystem.rtHandleProperties.rtHandleScale);
             cmd.SetGlobalVector(HDShaderIDs._ZBufferParams,             zBufferParams);
             cmd.SetGlobalVector(HDShaderIDs._ProjectionParams,          projectionParams);
             cmd.SetGlobalVector(HDShaderIDs.unity_OrthoParams,          unity_OrthoParams);
@@ -996,8 +995,8 @@ namespace UnityEngine.Experimental.Rendering.HDPipeline
 
             var blitMaterial = HDUtils.GetBlitMaterial(TextureDimension.Tex2D);
 
-            var screenToTargetScale = RTHandles.rtHandleProperties.screenToTargetScale;
-            Vector2 viewportScale = new Vector2(screenToTargetScale.x, screenToTargetScale.y);
+            var rtHandleScale = RTHandles.rtHandleProperties.rtHandleScale;
+            Vector2 viewportScale = new Vector2(rtHandleScale.x, rtHandleScale.y);
 
             m_RecorderPropertyBlock.SetTexture(HDShaderIDs._BlitTexture, input);
             m_RecorderPropertyBlock.SetVector(HDShaderIDs._BlitScaleBias, viewportScale);

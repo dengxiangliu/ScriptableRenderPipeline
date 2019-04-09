@@ -14,7 +14,7 @@ namespace UnityEngine.Experimental.Rendering
         public Vector2Int currentFrameSize;     // Size set as reference at the current frame
         // Scale factor from RTHandleSystem max size to requested reference size (referenceSize/maxSize)
         // (x,y) current frame (z,w) last frame (this is only used for buffered RTHandle Systems
-        public Vector4 screenToTargetScale;
+        public Vector4 rtHandleScale;
     }
 
     public partial class RTHandleSystem : IDisposable
@@ -78,6 +78,7 @@ namespace UnityEngine.Experimental.Rendering
         public void SetReferenceSize(int width, int height, MSAASamples msaaSamples)
         {
             m_RTHandleProperties.previousFrameSize = m_RTHandleProperties.currentFrameSize;
+            Vector2 lastFrameMaxSize = new Vector2(GetMaxWidth(), GetMaxHeight());
 
             width = Mathf.Max(width, 1);
             height = Mathf.Max(height, 1);
@@ -94,14 +95,14 @@ namespace UnityEngine.Experimental.Rendering
 
             if (HDDynamicResolutionHandler.instance.HardwareDynamicResIsEnabled())
             {
-                m_RTHandleProperties.screenToTargetScale = new Vector4(1.0f, 1.0f, 1.0f, 1.0f);
+                m_RTHandleProperties.rtHandleScale = new Vector4(1.0f, 1.0f, 1.0f, 1.0f);
             }
             else
             {
-                Vector2 maxSizeVector = new Vector2(GetMaxWidth(), GetMaxHeight());
-                Vector2 scaleCurrent = m_RTHandleProperties.currentFrameSize / maxSizeVector;
-                Vector2 scalePrevious = m_RTHandleProperties.previousFrameSize / maxSizeVector;
-                m_RTHandleProperties.screenToTargetScale = new Vector4(scaleCurrent.x, scaleCurrent.y, scalePrevious.x, scalePrevious.y);
+                Vector2 maxSize = new Vector2(GetMaxWidth(), GetMaxHeight());
+                Vector2 scaleCurrent = m_RTHandleProperties.currentFrameSize / maxSize;
+                Vector2 scalePrevious = m_RTHandleProperties.previousFrameSize / lastFrameMaxSize;
+                m_RTHandleProperties.rtHandleScale = new Vector4(scaleCurrent.x, scaleCurrent.y, scalePrevious.x, scalePrevious.y);
             }
         }
 

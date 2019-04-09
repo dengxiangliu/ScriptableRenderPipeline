@@ -83,7 +83,7 @@ namespace UnityEngine.Experimental.Rendering.HDPipeline
 
             // Check if the state is valid for evaluating ambient occlusion
             bool invalidState = rtEnvironement == null
-            || aoFilter == null || aoShader == null 
+            || aoFilter == null || aoShader == null
             || m_PipelineResources.textures.owenScrambledTex == null || m_PipelineResources.textures.scramblingTex == null
             || !(hdCamera.frameSettings.IsEnabled(FrameSettingsField.SSAO) && aoSettings.intensity.value > 0f);
 
@@ -142,7 +142,7 @@ namespace UnityEngine.Experimental.Rendering.HDPipeline
                     case HDRaytracingEnvironment.AOFilterMode.SpatioTemporal:
                     {
                         m_KernelFilter = aoFilter.FindKernel("AOCopyTAAHistory");
-                        
+
                         // Grab the history buffer
                         RTHandleSystem.RTHandle ambientOcclusionHistory = hdCamera.GetCurrentFrameRT((int)HDCameraFrameHistoryType.RaytracedAmbientOcclusion)
                             ?? hdCamera.AllocHistoryFrameRT((int)HDCameraFrameHistoryType.RaytracedAmbientOcclusion, AmbientOcclusionHistoryBufferAllocatorFunction, 1);
@@ -166,7 +166,7 @@ namespace UnityEngine.Experimental.Rendering.HDPipeline
 
                         // Apply a vectorized temporal filtering pass and store it back in the denoisebuffer0 with the analytic value in the third channel
                         var historyScale = new Vector2(hdCamera.actualWidth / (float)ambientOcclusionHistory.rt.width, hdCamera.actualHeight / (float)ambientOcclusionHistory.rt.height);
-                        cmd.SetComputeVectorParam(aoFilter, HDShaderIDs._ScreenToTargetScaleHistory, historyScale);
+                        cmd.SetComputeVectorParam(aoFilter, HDShaderIDs._RTHandleScaleHistory, historyScale);
                         cmd.SetComputeTextureParam(aoFilter, m_KernelFilter, HDShaderIDs._DepthTexture, m_SharedRTManager.GetDepthStencilBuffer());
                         cmd.SetComputeTextureParam(aoFilter, m_KernelFilter, HDShaderIDs._DenoiseInputTexture, m_ViewSpaceNormalBuffer);
                         cmd.SetComputeTextureParam(aoFilter, m_KernelFilter, HDShaderIDs._DenoiseOutputTextureRW, m_IntermediateBuffer);

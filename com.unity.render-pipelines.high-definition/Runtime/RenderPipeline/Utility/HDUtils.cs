@@ -273,7 +273,7 @@ namespace UnityEngine.Experimental.Rendering.HDPipeline
         // Here, both source and destination are camera-scaled.
         public static void BlitCameraTexture(CommandBuffer cmd, RTHandleSystem.RTHandle source, RTHandleSystem.RTHandle destination, float mipLevel = 0.0f, bool bilinear = false)
         {
-            Vector2 viewportScale = new Vector2(source.rtHandleProperties.screenToTargetScale.x, source.rtHandleProperties.screenToTargetScale.y);
+            Vector2 viewportScale = new Vector2(source.rtHandleProperties.rtHandleScale.x, source.rtHandleProperties.rtHandleScale.y);
             // Will set the correct camera viewport as well.
             SetRenderTarget(cmd, destination);
             BlitTexture(cmd, source, destination, viewportScale, mipLevel, bilinear);
@@ -290,7 +290,7 @@ namespace UnityEngine.Experimental.Rendering.HDPipeline
 
         public static void BlitCameraTexture(CommandBuffer cmd, RTHandleSystem.RTHandle source, RTHandleSystem.RTHandle destination, Rect destViewport, float mipLevel = 0.0f, bool bilinear = false)
         {
-            Vector2 viewportScale = new Vector2(source.rtHandleProperties.screenToTargetScale.x, source.rtHandleProperties.screenToTargetScale.y);
+            Vector2 viewportScale = new Vector2(source.rtHandleProperties.rtHandleScale.x, source.rtHandleProperties.rtHandleScale.y);
             SetRenderTarget(cmd, destination);
             cmd.SetViewport(destViewport);
             BlitTexture(cmd, source, destination, viewportScale, mipLevel, bilinear);
@@ -303,7 +303,7 @@ namespace UnityEngine.Experimental.Rendering.HDPipeline
             MaterialPropertyBlock properties = null, int shaderPassId = 0)
         {
             HDUtils.SetRenderTarget(commandBuffer, colorBuffer);
-            commandBuffer.SetGlobalVector(HDShaderIDs._ScreenToTargetScale, colorBuffer.rtHandleProperties.screenToTargetScale);
+            commandBuffer.SetGlobalVector(HDShaderIDs._RTHandleScale, colorBuffer.rtHandleProperties.rtHandleScale);
             commandBuffer.DrawProcedural(Matrix4x4.identity, material, shaderPassId, MeshTopology.Triangles, 3, 1, properties);
         }
 
@@ -312,7 +312,7 @@ namespace UnityEngine.Experimental.Rendering.HDPipeline
             MaterialPropertyBlock properties = null, int shaderPassId = 0)
         {
             HDUtils.SetRenderTarget(commandBuffer, colorBuffer, depthStencilBuffer);
-            commandBuffer.SetGlobalVector(HDShaderIDs._ScreenToTargetScale, colorBuffer.rtHandleProperties.screenToTargetScale);
+            commandBuffer.SetGlobalVector(HDShaderIDs._RTHandleScale, colorBuffer.rtHandleProperties.rtHandleScale);
             commandBuffer.DrawProcedural(Matrix4x4.identity, material, shaderPassId, MeshTopology.Triangles, 3, 1, properties);
         }
 
@@ -321,7 +321,7 @@ namespace UnityEngine.Experimental.Rendering.HDPipeline
             MaterialPropertyBlock properties = null, int shaderPassId = 0)
         {
             HDUtils.SetRenderTarget(commandBuffer, colorBuffers, depthStencilBuffer);
-            commandBuffer.SetGlobalVector(HDShaderIDs._ScreenToTargetScale, depthStencilBuffer.rtHandleProperties.screenToTargetScale);
+            commandBuffer.SetGlobalVector(HDShaderIDs._RTHandleScale, depthStencilBuffer.rtHandleProperties.rtHandleScale);
             commandBuffer.DrawProcedural(Matrix4x4.identity, material, shaderPassId, MeshTopology.Triangles, 3, 1, properties);
         }
 
@@ -330,7 +330,7 @@ namespace UnityEngine.Experimental.Rendering.HDPipeline
             MaterialPropertyBlock properties = null, int shaderPassId = 0)
         {
             CoreUtils.SetRenderTarget(commandBuffer, colorBuffer);
-            commandBuffer.SetGlobalVector(HDShaderIDs._ScreenToTargetScale, rtHandleProperties.screenToTargetScale);
+            commandBuffer.SetGlobalVector(HDShaderIDs._RTHandleScale, rtHandleProperties.rtHandleScale);
             commandBuffer.DrawProcedural(Matrix4x4.identity, material, shaderPassId, MeshTopology.Triangles, 3, 1, properties);
         }
 
@@ -346,14 +346,14 @@ namespace UnityEngine.Experimental.Rendering.HDPipeline
         {
             // We request the mouse post based on the type of the camera
             Vector2 mousePixelCoord = MousePositionDebug.instance.GetMousePosition(camera.screenSize.y, camera.camera.cameraType == CameraType.SceneView);
-            return new Vector4(mousePixelCoord.x, mousePixelCoord.y, RTHandles.rtHandleProperties.screenToTargetScale.x * mousePixelCoord.x / camera.screenSize.x, RTHandles.rtHandleProperties.screenToTargetScale.y * mousePixelCoord.y / camera.screenSize.y);
+            return new Vector4(mousePixelCoord.x, mousePixelCoord.y, RTHandles.rtHandleProperties.rtHandleScale.x * mousePixelCoord.x / camera.screenSize.x, RTHandles.rtHandleProperties.rtHandleScale.y * mousePixelCoord.y / camera.screenSize.y);
         }
 
         // Returns mouse click coordinates: (x,y) in pixels and (z,w) normalized inside the render target (not the viewport)
         public static Vector4 GetMouseClickCoordinates(HDCamera camera)
         {
             Vector2 mousePixelCoord = MousePositionDebug.instance.GetMouseClickPosition(camera.screenSize.y);
-            return new Vector4(mousePixelCoord.x, mousePixelCoord.y, RTHandles.rtHandleProperties.screenToTargetScale.x * mousePixelCoord.x / camera.screenSize.x, RTHandles.rtHandleProperties.screenToTargetScale.y * mousePixelCoord.y / camera.screenSize.y);
+            return new Vector4(mousePixelCoord.x, mousePixelCoord.y, RTHandles.rtHandleProperties.rtHandleScale.x * mousePixelCoord.x / camera.screenSize.x, RTHandles.rtHandleProperties.rtHandleScale.y * mousePixelCoord.y / camera.screenSize.y);
         }
 
         // This function check if camera is a CameraPreview, then check if this preview is a regular preview (i.e not a preview from the camera editor)

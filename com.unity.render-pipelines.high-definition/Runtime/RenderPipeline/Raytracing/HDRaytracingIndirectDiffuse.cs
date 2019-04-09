@@ -78,7 +78,7 @@ namespace UnityEngine.Experimental.Rendering.HDPipeline
             RaytracingShader indirectDiffuseShader = m_PipelineAsset.renderPipelineResources.shaders.indirectDiffuseRaytracing;
 
             return !(rtEnvironement == null || !rtEnvironement.raytracedIndirectDiffuse
-                || indirectDiffuseShader == null 
+                || indirectDiffuseShader == null
                 || m_PipelineResources.textures.owenScrambledTex == null || m_PipelineResources.textures.scramblingTex == null);
         }
 
@@ -182,7 +182,7 @@ namespace UnityEngine.Experimental.Rendering.HDPipeline
 
                     // Compute the combined TAA frame
                     var historyScale = new Vector2(hdCamera.actualWidth / (float)indirectDiffuseHistory.rt.width, hdCamera.actualHeight / (float)indirectDiffuseHistory.rt.height);
-                    cmd.SetComputeVectorParam(indirectDiffuseAccumulation, HDShaderIDs._ScreenToTargetScaleHistory, historyScale);
+                    cmd.SetComputeVectorParam(indirectDiffuseAccumulation, HDShaderIDs._RTHandleScaleHistory, historyScale);
                     cmd.SetComputeTextureParam(indirectDiffuseAccumulation, m_KernelFilter, HDShaderIDs._DepthTexture, m_SharedRTManager.GetDepthStencilBuffer());
                     cmd.SetComputeTextureParam(indirectDiffuseAccumulation, m_KernelFilter, HDShaderIDs._DenoiseInputTexture, m_IndirectDiffuseTexture);
                     cmd.SetComputeTextureParam(indirectDiffuseAccumulation, m_KernelFilter, HDShaderIDs._DenoiseOutputTextureRW, m_DenoiseBuffer0);

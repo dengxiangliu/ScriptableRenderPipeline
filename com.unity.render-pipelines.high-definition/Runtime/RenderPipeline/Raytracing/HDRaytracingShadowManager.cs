@@ -60,7 +60,7 @@ namespace UnityEngine.Experimental.Rendering.HDPipeline
             m_DenoiseBuffer1 = RTHandles.Alloc(Vector2.one, filterMode: FilterMode.Point, colorFormat: GraphicsFormat.R16G16B16A16_SFloat, enableRandomWrite: true, useDynamicScale: true, useMipMap: false, name: "DenoiseBuffer1");
             m_RaytracingDirectionBuffer = RTHandles.Alloc(Vector2.one, filterMode: FilterMode.Point, colorFormat: GraphicsFormat.R16G16B16A16_SFloat, enableRandomWrite: true, useDynamicScale: true, useMipMap: false, name: "RaytracingDirectionBuffer");
             m_RaytracingDistanceBuffer = RTHandles.Alloc(Vector2.one, filterMode: FilterMode.Point, colorFormat: GraphicsFormat.R32_SFloat, enableRandomWrite: true, useDynamicScale: true, useMipMap: false, name: "RaytracingDistanceBuffer");
-            
+
             // Allocate the final result texture
             m_AreaShadowTextureArray = RTHandles.Alloc(Vector2.one, slices:4, dimension:TextureDimension.Tex2DArray, filterMode: FilterMode.Point, colorFormat: GraphicsFormat.R16_SFloat, enableRandomWrite: true, useDynamicScale: true, useMipMap: false, name: "AreaShadowArrayBuffer");
         }
@@ -93,7 +93,7 @@ namespace UnityEngine.Experimental.Rendering.HDPipeline
 
         static RTHandleSystem.RTHandle AreaAnalyticHistoryBufferAllocatorFunction(string viewName, int frameIndex, RTHandleSystem rtHandleSystem)
         {
-            return rtHandleSystem.Alloc(Vector2.one, slices:4, dimension:TextureDimension.Tex2DArray, filterMode: FilterMode.Point, colorFormat: GraphicsFormat.R16_SFloat, 
+            return rtHandleSystem.Alloc(Vector2.one, slices:4, dimension:TextureDimension.Tex2DArray, filterMode: FilterMode.Point, colorFormat: GraphicsFormat.R16_SFloat,
                         enableRandomWrite: true, useDynamicScale: true, useMipMap: false, name: "AnalyticHistoryBuffer");
         }
 
@@ -110,7 +110,7 @@ namespace UnityEngine.Experimental.Rendering.HDPipeline
             ComputeShader shadowFilter = m_PipelineAsset.renderPipelineResources.shaders.areaShadowFilterCS;
 
             // Make sure everything is valid
-            bool invalidState = rtEnvironement == null || rtEnvironement.raytracedShadows == false || 
+            bool invalidState = rtEnvironement == null || rtEnvironement.raytracedShadows == false ||
 					hdCamera.frameSettings.litShaderMode != LitShaderMode.Deferred ||
                     shadowRaytrace == null || shadowsCompute == null || shadowFilter == null ||
                     m_PipelineResources.textures.owenScrambledTex == null || m_PipelineResources.textures.scramblingTex == null;
@@ -293,10 +293,10 @@ namespace UnityEngine.Experimental.Rendering.HDPipeline
 
                     // Apply a vectorized temporal filtering pass and store it back in the denoisebuffer0 with the analytic value in the third channel
                     var historyScale = new Vector2(hdCamera.actualWidth / (float)areaShadowHistoryArray.rt.width, hdCamera.actualHeight / (float)areaShadowHistoryArray.rt.height);
-                    cmd.SetComputeVectorParam(shadowFilter, HDShaderIDs._ScreenToTargetScaleHistory, historyScale);
+                    cmd.SetComputeVectorParam(shadowFilter, HDShaderIDs._RTHandleScaleHistory, historyScale);
                     cmd.SetComputeTextureParam(shadowFilter, applyTAAKernel, HDShaderIDs._AnalyticProbBuffer, m_AnalyticProbBuffer);
                     cmd.SetComputeTextureParam(shadowFilter, applyTAAKernel, HDShaderIDs._DepthTexture, m_SharedRTManager.GetDepthStencilBuffer());
-                    cmd.SetComputeTextureParam(shadowFilter, applyTAAKernel, HDShaderIDs._AnalyticHistoryBuffer, areaAnalyticHistoryArray); 
+                    cmd.SetComputeTextureParam(shadowFilter, applyTAAKernel, HDShaderIDs._AnalyticHistoryBuffer, areaAnalyticHistoryArray);
                     cmd.SetComputeTextureParam(shadowFilter, applyTAAKernel, HDShaderIDs._DenoiseInputTexture, m_DenoiseBuffer1);
                     cmd.SetComputeTextureParam(shadowFilter, applyTAAKernel, HDShaderIDs._DenoiseOutputTextureRW, m_DenoiseBuffer0);
                     cmd.SetComputeTextureParam(shadowFilter, applyTAAKernel, HDShaderIDs._AreaShadowHistoryRW, areaShadowHistoryArray);

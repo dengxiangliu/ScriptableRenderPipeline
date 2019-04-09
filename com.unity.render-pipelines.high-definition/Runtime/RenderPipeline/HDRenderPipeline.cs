@@ -3090,9 +3090,8 @@ namespace UnityEngine.Experimental.Rendering.HDPipeline
 
             using (new ProfilingSample(cmd, "Color Gaussian MIP Chain", CustomSamplerId.ColorPyramid.GetSampler()))
             {
-                var screenToTargetScale = RTHandles.rtHandleProperties.screenToTargetScale;
                 m_PyramidSizeV2I.Set(hdCamera.actualWidth, hdCamera.actualHeight);
-                lodCount = m_MipGenerator.RenderColorGaussianPyramid(cmd, m_PyramidSizeV2I, m_CameraColorBuffer, currentColorPyramid, screenToTargetScale.x, screenToTargetScale.y);
+                lodCount = m_MipGenerator.RenderColorGaussianPyramid(cmd, m_PyramidSizeV2I, m_CameraColorBuffer, currentColorPyramid, RTHandles.rtHandleProperties.rtHandleScale.x, RTHandles.rtHandleProperties.rtHandleScale.y);
                 hdCamera.colorPyramidHistoryMipCount = lodCount;
             }
 
@@ -3298,7 +3297,6 @@ namespace UnityEngine.Experimental.Rendering.HDPipeline
                     m_DebugFullScreenPropertyBlock.SetInt(HDShaderIDs._DebugDepthPyramidMip, (int)(m_CurrentDebugDisplaySettings.data.fullscreenDebugMip * info.mipLevelCount));
                     m_DebugFullScreenPropertyBlock.SetBuffer(HDShaderIDs._DebugDepthPyramidOffsets, info.GetOffsetBufferData(m_DepthPyramidMipLevelOffsetsBuffer));
 
-                    cmd.SetGlobalVector(HDShaderIDs._ScreenToTargetScale, RTHandles.rtHandleProperties.screenToTargetScale);
                     HDUtils.DrawFullScreen(cmd, m_DebugFullScreen, m_IntermediateAfterPostProcessBuffer, m_DebugFullScreenPropertyBlock, 0);
                     PushColorPickerDebugTexture(cmd, hdCamera, m_IntermediateAfterPostProcessBuffer);
                 }
@@ -3353,7 +3351,6 @@ namespace UnityEngine.Experimental.Rendering.HDPipeline
                     // Everything we have capture is flipped (as it happen before FinalPass/postprocess/Blit. So if we are not in SceneView
                     // (i.e. we have perform a flip, we need to flip the input texture) + we need to handle the case were we debug a fullscreen pass that have already perform the flip
 
-                    cmd.SetGlobalVector(HDShaderIDs._ScreenToTargetScale, RTHandles.rtHandleProperties.screenToTargetScale);
                     HDUtils.DrawFullScreen(cmd, m_DebugColorPicker, m_IntermediateAfterPostProcessBuffer, m_DebugFullScreenPropertyBlock, 0);
                 }
             }
