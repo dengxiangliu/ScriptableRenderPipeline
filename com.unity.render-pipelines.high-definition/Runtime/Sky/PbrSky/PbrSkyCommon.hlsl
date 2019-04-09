@@ -1,4 +1,5 @@
 #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/Common.hlsl"
+#include "Packages/com.unity.render-pipelines.core/ShaderLibrary/CommonLighting.hlsl"
 #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/VolumeRendering.hlsl"
 #include "Packages/com.unity.render-pipelines.high-definition/Runtime/Sky/PbrSky/PbrSkyRenderer.cs.hlsl"
 
@@ -59,19 +60,6 @@ float3 AtmosphereScatter(float LdotV, float height)
     return AirScatter(LdotV, height) + AerosolScatter(LdotV, height);
 }
 
-void ComputeAtmosphericLocalFrame(float NdotL, float NdotV, float LdotV,
-                                  out float3 L, out float3 N, out float3 V)
-{
-    // Convention: the normal vector N points upwards.
-    // Utilize the rotational symmetry.
-    N = float3(0, 0, 1);
-    L = float3(sqrt(saturate(1 - NdotL * NdotL)), 0, NdotL);
-
-    V.z = NdotV;
-    V.x = abs(L.x) >= FLT_EPS ? ((LdotV - L.z * V.z) * rcp(L.x)) : 0;
-    V.y = sqrt(saturate(1 - V.x * V.x - V.z * V.z));
-}
-
 // Returns a negative number if there's no intersection.
 float IntersectAtmosphereFromOutside(float cosChi, float height)
 {
@@ -100,7 +88,7 @@ float IntersectAtmosphereFromOutside(float cosChi, float height)
     float d = b * b - c;
 
     // We are only interested in the smallest root (closest intersection).
-    return (d >= 0) ? (-b + sqrt(d)) : d;
+    return (d >= 0) ? (-b - sqrt(d)) : d;
 }
 
 // Assumes there is an intersection.
@@ -139,7 +127,7 @@ float GetCosineOfHorizonZenithAngle(float height)
 
     // cos(Pi - x) = -cos(x).
     // Compute -sqrt(r^2 - R^2) / r = -sqrt(1 - (R / r)^2).
-    return -sqrt(1 - Sq(R * rcp(r)));
+    return -sqrt(saturate(1 - Sq(R * rcp(r))));
 }
 
 // We use the parametrization from "Outdoor Light Scattering Sample Update" by E. Yusov.
@@ -177,24 +165,25 @@ float2 UnmapAerialPerspective(float3 uvw)
     return float2(cosChi, height);
 }
 
-float3 SampleTransmittanceTexture(float2 uv)
-{
-    float2 optDepth = SAMPLE_TEXTURE2D_LOD(_OpticalDepthTexture, s_linear_clamp_sampler, uv, 0).xy;
-
-    // Compose the optical depth with extinction at the sea level.
-    return TransmittanceFromOpticalDepth(optDepth.x * _AirSeaLevelExtinction +
-                                         optDepth.y * _AerosolSeaLevelExtinction);
-}
-
 float3 SampleTransmittanceTexture(float cosChi, float height, bool belowHorizon)
 {
-    float2 uv = MapAerialPerspective(cosChi, height).xy;
+    // TODO: pass the sign? Do not recompute?
+    float s = belowHorizon ? -1 : 1;
+
+    // From the current position to the atmospheric boundary.
+    float2 uv       = MapAerialPerspective(s * cosChi, height).xy;
+    float2 optDepth = SAMPLE_TEXTURE2D_LOD(_OpticalDepthTexture, s_linear_clamp_sampler, uv, 0).xy;
 
     if (belowHorizon)
     {
         // Direction points below the horizon.
-        // Must flip the direction and perform the look-up from the ground.
+        // What we want to know is transmittance from the ground level to our current position.
+        // Therefore, first, we must flip the direction and perform the look-up from the ground.
         // The direction must be parametrized w.r.t. the normal of the intersection point.
+        // This value corresponds to transmittance from the ground level to the atmospheric boundary.
+        // If we perform a look-up from the current position (using the reversed direction),
+        // we can compute transmittance from the current position to the atmospheric boundary.
+        // Taking the difference will give us the desired value.
 
         float rcpR = _RcpPlanetaryRadius;
         float h    = height;
@@ -209,10 +198,16 @@ float3 SampleTransmittanceTexture(float cosChi, float height, bool belowHorizon)
         // cos(Pi - gamma) = sqrt(1 - sin(Pi - gamma)^2).
         float cosPhi = sqrt(saturate(1 - Sq(x * sqrt(saturate(1 - Sq(cosChi))))));
 
-        uv = MapAerialPerspective(cosPhi, 0).xy;
+        // From the ground level to the atmospheric boundary -
+        // from the current position to the atmospheric boundary.
+        uv       = MapAerialPerspective(cosPhi, 0).xy;
+        optDepth = SAMPLE_TEXTURE2D_LOD(_OpticalDepthTexture, s_linear_clamp_sampler, uv, 0).xy
+                 - optDepth;
     }
 
-    return SampleTransmittanceTexture(uv);
+    // Compose the optical depth with extinction at the sea level.
+    return TransmittanceFromOpticalDepth(optDepth.x * _AirSeaLevelExtinction +
+                                         optDepth.y * _AerosolSeaLevelExtinction);
 }
 
 float3 SampleTransmittanceTexture(float cosChi, float height)
@@ -241,28 +236,4 @@ float3 SampleGroundIrradianceTexture(float NdotL)
     float2 uv = float2(MapCosineOfZenithAngle(NdotL), 0);
 
     return SAMPLE_TEXTURE2D_LOD(_GroundIrradianceTexture, s_linear_clamp_sampler, uv, 0).rgb;
-}
-
-float MapCosineOfLightViewAngle(float LdotV)
-{
-    float x = acos(LdotV) * INV_PI;
-    float y = 1 - 2 * x;
-    float s = FastSign(LdotV);
-    float a = saturate(s * y);
-    float r = sqrt(a);
-    float p = r * r * r;
-    float u = 0.5 - 0.5 * s * p;
-
-    return u;
-}
-
-float UnmapCosineOfLightViewAngle(float u)
-{
-    float s = FastSign(0.5 - u);
-    float p = saturate(s * (1 - 2 * u));
-    float a = pow(p, 0.66666667);
-    float y = s * a;
-    float x = 0.5 - 0.5 * y;
-
-    return cos(PI * x);
 }

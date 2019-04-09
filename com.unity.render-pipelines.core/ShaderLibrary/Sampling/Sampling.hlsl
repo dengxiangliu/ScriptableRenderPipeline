@@ -18,7 +18,7 @@ real3 SphericalToCartesian(real phi, real cosTheta)
     real sinPhi, cosPhi;
     sincos(phi, sinPhi, cosPhi);
 
-    real sinTheta = sqrt(saturate(1.0 - cosTheta * cosTheta));
+    real sinTheta = SinFromCos(cosTheta);
 
     return real3(sinTheta * cosPhi, sinTheta * sinPhi, cosTheta);
 }

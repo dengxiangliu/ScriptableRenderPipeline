@@ -14,9 +14,9 @@ RW_TEXTURE3D(float4, _InScatteredRadianceTable); // Emulate a 4D texture with a 
 [numthreads(4, 4, 4)]
 void main(uint3 dispatchThreadId : SV_DispatchThreadID)
 {
+    const uint   n     = PBRSKYCONFIG_IN_SCATTERED_RADIANCE_TABLE_SIZE_W / 2;
     const float3 scale = rcp(TABLE_SIZE);
     const float3 bias  = 0.5 * scale;
-    const uint   n     = PBRSKYCONFIG_IN_SCATTERED_RADIANCE_TABLE_SIZE_W / 2;
 
     // Let the hardware and the driver handle the ordering of the computation.
     uint3 tableCoord   = dispatchThreadId;
@@ -26,21 +26,31 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID)
     // We don't care about the extremal points (boundary values).
     float3 uvw = tableCoord * scale + bias;
 
-    float NdotV  = UnmapAerialPerspective(float3(uvw.xy, aboveHorizon)).x;
+    // Convention:
+    // V points towards the camera.
+    // The normal vector N points upwards (local Z).
+    // The view vector V spans the local XZ plane.
+    // The light vector is represented as {phiL, cosThataL}.
+    float cosChi = UnmapAerialPerspective(float3(uvw.xy, aboveHorizon)).x;
     float height = UnmapAerialPerspective(float3(uvw.xy, aboveHorizon)).y;
-    float NdotL  = UnmapCosineOfZenithAngle(frac(uvw.z));
-    float LdotV  = UnmapCosineOfLightViewAngle((textureId & ~n) * rcp(n - 1));
     float cosHor = GetCosineOfHorizonZenithAngle(height);
+    float NdotL  = UnmapCosineOfZenithAngle(frac(uvw.z));
+    float phiL   = PI * ((textureId & ~n) * rcp(n - 1));
+    float NdotV  = -cosChi;
 
-    float3 L, N, V;
-    ComputeAtmosphericLocalFrame(NdotL, NdotV, LdotV, L, N, V);
+    float3 N = float3(0, 0, 1);
+    float3 V = SphericalToCartesian(0, NdotV);
+    float3 L = SphericalToCartesian(phiL, NdotL);
+
+    float LdotV = dot(L, V);
+    // float LdotV = SphericalDot(NdotL, phiL, NdotV, 0);
 
     float3 radiance = 0;
 
     if (NdotL > cosHor)
     {
         // Sun is directly visible from this position.
-        float3 transm  = SampleTransmittanceTexture(NdotL, height);
+        float3 transm  = SampleTransmittanceTexture(NdotL, height, false);
         float3 scatter = AtmosphereScatter(LdotV, height);
 
         radiance += scatter * transm * _SunRadiance;
@@ -59,11 +69,10 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID)
         float h = height;
         float r = R + h;
 
-        float3 origin      = r * N;
+        float3 P           = r * N;
         float  cosAperture = -cosHor; // Cosine of the half-angle
 
-        const float3 groundBrdf       = INV_PI * _GroundAlbedo;
-        const int    numGroundSamples = 34;
+        const int numGroundSamples = 89;
 
         for (int i = 0; i < numGroundSamples; i++)
         {
@@ -73,23 +82,22 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID)
             float3 dir; float rcpPdf;
             SampleCone(f, cosAperture, dir, rcpPdf);
 
+            // Flip it upside-down to point towards the sphere light (planet).
+            float3 gL = -dir;
+
+            // TODO: compute analytically?
+            float  t  = IntersectPlanetFromOutside(gL.z, h);
+            float3 gP = P + t * gL;
+            float3 gN = normalize(gP);
+
+            // Shade the ground.
+            const float3 gBrdf = INV_PI * _GroundAlbedo;
+
+            float3 transm  = SampleTransmittanceTexture(gL.z, h, true);
+            float3 scatter = AtmosphereScatter(dot(gL, V), h);
+
             float weight = rcpPdf * rcp(numGroundSamples);
-
-            // Make it point towards the ground.
-            dir = -dir;
-
-            float  t = IntersectPlanetFromOutside(dir.z, height);
-            float3 P = origin + t * dir;
-
-            float3 groundNormal     = normalize(P);
-            float  groundNdotL      = dot(groundNormal, L);
-            float3 groundIrradiance = SampleGroundIrradianceTexture(groundNdotL);
-            float3 groundRadiance   = groundIrradiance * groundBrdf * saturate(dot(groundNormal, -dir));
-
-            float3 transm  = SampleTransmittanceTexture(dir.z, height, true);
-            float3 scatter = AtmosphereScatter(dot(dir, V), height);
-
-            radiance += weight * transm * scatter * groundRadiance;
+            radiance += weight * scatter * transm * gBrdf * SampleGroundIrradianceTexture(dot(gN, L));
         }
     }
 

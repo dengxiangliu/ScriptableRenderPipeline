@@ -451,6 +451,7 @@ float FastSign(float s, bool ignoreNegZero = true)
 // Returns the new tangent (the normal is unaffected).
 real3 Orthonormalize(real3 tangent, real3 normal)
 {
+    // TODO: use SafeNormalize()?
     return normalize(tangent - dot(tangent, normal) * normal);
 }
 
@@ -956,6 +957,18 @@ real3 SafeNormalize(real3 inVec)
 real SafeDiv(real numer, real denom)
 {
     return (numer != denom) ? numer / denom : 1;
+}
+
+// Assumes that (0 <= x <= Pi).
+real SinFromCos(real cosX)
+{
+    return sqrt(saturate(1 - cosX * cosX));
+}
+
+// Dot product in spherical coordinates.
+real SphericalDot(real cosTheta1, real phi1, real cosTheta2, real phi2)
+{
+    return SinFromCos(cosTheta1) * SinFromCos(cosTheta2) * cos(phi1 - phi2) + cosTheta1 * cosTheta2;
 }
 
 // Generates a triangle in homogeneous clip space, s.t.

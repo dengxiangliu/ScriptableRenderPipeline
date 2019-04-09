@@ -15,10 +15,10 @@ namespace UnityEngine.Experimental.Rendering.HDPipeline
             GroundIrradianceTableSize     = 128,    // <N, L>
 
             // 32 MiB
-            InScatteredRadianceTableSizeX = 64,     // <N, V>
+            InScatteredRadianceTableSizeX = 64,     // <N, V> (positive)
             InScatteredRadianceTableSizeY = 32,     // height
             InScatteredRadianceTableSizeZ = 64,     // <N, L>
-            InScatteredRadianceTableSizeW = 16 * 2, // <L, V>, the 1st half is view above the horizon, the 2nd half is below
+            InScatteredRadianceTableSizeW = 16 * 2, // AzimuthAngle(L); the 1st half is view above the horizon, the 2nd half is below
         }
 
         // Store the hash of the parameters each time precomputation is done.
@@ -57,6 +57,9 @@ namespace UnityEngine.Experimental.Rendering.HDPipeline
             Debug.Assert(s_GroundIrradiancePrecomputationCS    != null);
             Debug.Assert(s_InScatteredRadiancePrecomputationCS != null);
 
+            //var colorFormat = GraphicsFormat.R16G16B16A16_SFloat;
+            var colorFormat = GraphicsFormat.R32G32B32A32_SFloat;
+
             // Textures
             m_OpticalDepthTable = RTHandles.Alloc((int)PbrSkyConfig.OpticalDepthTableSizeX,
                                                   (int)PbrSkyConfig.OpticalDepthTableSizeY,
@@ -67,7 +70,7 @@ namespace UnityEngine.Experimental.Rendering.HDPipeline
 
             m_GroundIrradianceTable = RTHandles.Alloc((int)PbrSkyConfig.GroundIrradianceTableSize, 1,
                                                       filterMode: FilterMode.Bilinear,
-                                                      colorFormat: GraphicsFormat.R16G16B16A16_SFloat,
+                                                      colorFormat: colorFormat,
                                                       enableRandomWrite: true, xrInstancing: false, useDynamicScale: false,
                                                       name: "GroundIrradianceTable");
 
@@ -78,7 +81,7 @@ namespace UnityEngine.Experimental.Rendering.HDPipeline
                                                          (int)PbrSkyConfig.InScatteredRadianceTableSizeW,
                                                          dimension: TextureDimension.Tex3D,
                                                          filterMode: FilterMode.Bilinear,
-                                                         colorFormat: GraphicsFormat.R16G16B16A16_SFloat,
+                                                         colorFormat: colorFormat,
                                                          enableRandomWrite: true, xrInstancing: false, useDynamicScale: false,
                                                          name: "InScatteredRadianceTable");
 
